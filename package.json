@@ -24,7 +24,7 @@
     {
       "name": "uuid",
       "title": "UUID Generator",
-      "subtitle": "Generate UUID v4 \u0026 v7",
+      "subtitle": "Generate UUID v4 & v7",
       "description": "Generate single or batch UUID v4 and v7 strings",
       "mode": "view"
     },
@@ -45,14 +45,14 @@
     {
       "name": "datetime",
       "title": "DateTime",
-      "subtitle": "Timestamp \u0026 Date Conversion",
+      "subtitle": "Timestamp & Date Conversion",
       "description": "Convert between timestamps and ISO dates",
       "mode": "view"
     },
     {
       "name": "filesize",
       "title": "File Size",
-      "subtitle": "Bytes \u0026 Human Readable Conversion",
+      "subtitle": "Bytes & Human Readable Conversion",
       "description": "Convert between bytes and human-readable file sizes",
       "mode": "view"
     },

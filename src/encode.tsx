@@ -1,11 +1,7 @@
-import { Action, ActionPanel, List, showToast, Toast, Clipboard, getPreferenceValues } from "@raycast/api";
+import { Action, ActionPanel, List, showToast, Toast, Clipboard } from "@raycast/api";
 import { useState, useEffect } from "react";
 import { encodeUtils } from "./utils/encoding";
 import { getSelectedText } from "@raycast/api";
-
-interface Preferences {
-  defaultMethod: string;
-}
 
 export default function Command() {
   const [text, setText] = useState<string>("");
@@ -30,11 +26,15 @@ export default function Command() {
     const newResults = methods.map((method) => {
       try {
         const result = encodeUtils[method as keyof typeof encodeUtils](text);
+        // Skip if result is an error message
+        if (result.includes("Error")) {
+          return null;
+        }
         return { method: method.toUpperCase(), result };
       } catch {
-        return { method: method.toUpperCase(), result: "Error encoding" };
+        return null;
       }
-    });
+    }).filter(Boolean) as { method: string; result: string }[];
     setResults(newResults);
   }, [text]);
 
@@ -47,6 +47,8 @@ export default function Command() {
     <List searchText={text} onSearchTextChange={setText}>
       {text.trim() === "" ? (
         <List.EmptyView title="Enter text to encode" description="Type any text to see encoding options" />
+      ) : results.length === 0 ? (
+        <List.EmptyView title="No valid encoding" description="Text cannot be encoded with available methods" />
       ) : (
         results.map(({ method, result }) => (
           <List.Item

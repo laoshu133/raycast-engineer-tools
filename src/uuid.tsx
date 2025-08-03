@@ -12,7 +12,6 @@ export default function Command() {
       uuid: type === "v4" ? uuidUtils.v4() : uuidUtils.v7(),
       type: type.toUpperCase()
     }));
-
     setResults(uuids);
     
     if (count === 1) {

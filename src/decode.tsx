@@ -26,11 +26,15 @@ export default function Command() {
     const newResults = methods.map((method) => {
       try {
         const result = decodeUtils[method as keyof typeof decodeUtils](text);
+        // Skip if result is an error message
+        if (result.includes("Invalid") || result.includes("Error")) {
+          return null;
+        }
         return { method: method.toUpperCase(), result };
       } catch {
-        return { method: method.toUpperCase(), result: "Error decoding" };
+        return null;
       }
-    });
+    }).filter(Boolean) as { method: string; result: string }[];
     setResults(newResults);
   }, [text]);
 
@@ -43,6 +47,8 @@ export default function Command() {
     <List searchText={text} onSearchTextChange={setText}>
       {text.trim() === "" ? (
         <List.EmptyView title="Enter text to decode" description="Type any text to see decoding options" />
+      ) : results.length === 0 ? (
+        <List.EmptyView title="No valid decoding" description="Text cannot be decoded with available methods" />
       ) : (
         results.map(({ method, result }) => (
           <List.Item

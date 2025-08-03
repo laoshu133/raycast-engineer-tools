@@ -1,5 +1,11 @@
 export const encodeUtils = {
-  url: (text: string): string => encodeURIComponent(text),
+  url: (text: string): string => {
+    try {
+      return encodeURIComponent(text);
+    } catch {
+      return "Error encoding URL";
+    }
+  },
 
   base64: (text: string): string => Buffer.from(text).toString("base64"),
 
@@ -7,7 +13,13 @@ export const encodeUtils = {
 };
 
 export const decodeUtils = {
-  url: (text: string): string => decodeURIComponent(text),
+  url: (text: string): string => {
+    try {
+      return decodeURIComponent(text);
+    } catch {
+      return "Invalid URL encoding";
+    }
+  },
 
   base64: (text: string): string => {
     try {
