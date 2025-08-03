@@ -10,15 +10,15 @@ export default function Command() {
       id: `${type}-${i}`,
       title: type === "v4" ? uuidUtils.v4() : uuidUtils.v7(),
       uuid: type === "v4" ? uuidUtils.v4() : uuidUtils.v7(),
-      type: type.toUpperCase()
+      type: type.toUpperCase(),
     }));
     setResults(uuids);
-    
+
     if (count === 1) {
       Clipboard.copy(uuids[0].uuid);
       showToast(Toast.Style.Success, `${type.toUpperCase()} UUID generated`, uuids[0].uuid);
     } else {
-      const allUUIDs = uuids.map(u => u.uuid).join('\n');
+      const allUUIDs = uuids.map((u) => u.uuid).join("\n");
       Clipboard.copy(allUUIDs);
       showToast(Toast.Style.Success, `${count} ${type.toUpperCase()} UUIDs generated`, allUUIDs);
     }
@@ -37,7 +37,7 @@ export default function Command() {
           subtitle="Random UUID"
           actions={
             <ActionPanel>
-              <Action title="Generate v4" onAction={() => generateUUID("v4")} />
+              <Action title="Generate V4" onAction={() => generateUUID("v4")} />
             </ActionPanel>
           }
         />
@@ -46,14 +46,14 @@ export default function Command() {
           subtitle="Timestamp-sorted UUID"
           actions={
             <ActionPanel>
-              <Action title="Generate v7" onAction={() => generateUUID("v7")} />
+              <Action title="Generate V7" onAction={() => generateUUID("v7")} />
             </ActionPanel>
           }
         />
       </List.Section>
 
       <List.Section title="Generate Multiple UUIDs">
-        {[5, 10, 20, 50].map(count => (
+        {[5, 10, 20, 50].map((count) => (
           <List.Item
             key={`v4-${count}`}
             title={`Generate ${count} UUID v4`}
@@ -64,7 +64,7 @@ export default function Command() {
             }
           />
         ))}
-        {[5, 10, 20, 50].map(count => (
+        {[5, 10, 20, 50].map((count) => (
           <List.Item
             key={`v7-${count}`}
             title={`Generate ${count} UUID v7`}

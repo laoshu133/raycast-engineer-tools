@@ -27,37 +27,37 @@ export default function Command() {
 
     // Encode as TypeID
     const prefixes = ["user", "order", "file", "task", "event", "item"];
-    prefixes.forEach(prefix => {
+    prefixes.forEach((prefix) => {
       try {
         const result = typeidUtils.encode(prefix, text);
         newResults.push({
           title: result,
           subtitle: `TypeID with prefix: ${prefix}`,
-          action: "encode"
+          action: "encode",
         });
       } catch {
         newResults.push({
           title: "Error encoding",
           subtitle: `Failed to encode with prefix: ${prefix}`,
-          action: "error"
+          action: "error",
         });
       }
     });
 
     // Decode TypeID
-    if (text.includes('_')) {
+    if (text.includes("_")) {
       try {
         const result = typeidUtils.decode(text);
         newResults.push({
           title: result,
           subtitle: "Decoded UUID from TypeID",
-          action: "decode"
+          action: "decode",
         });
       } catch {
         newResults.push({
           title: "Invalid TypeID",
           subtitle: "Failed to decode TypeID",
-          action: "error"
+          action: "error",
         });
       }
     }
@@ -73,7 +73,10 @@ export default function Command() {
   return (
     <List searchText={text} onSearchTextChange={setText}>
       {text.trim() === "" ? (
-        <List.EmptyView title="Enter text or TypeID" description="Type UUID to encode as TypeID, or TypeID to decode to UUID" />
+        <List.EmptyView
+          title="Enter text or TypeID"
+          description="Type UUID to encode as TypeID, or TypeID to decode to UUID"
+        />
       ) : (
         results.map((result, index) => (
           <List.Item

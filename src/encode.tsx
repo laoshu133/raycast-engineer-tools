@@ -23,18 +23,20 @@ export default function Command() {
     if (!text.trim()) return;
 
     const methods = ["url", "base64", "hex"];
-    const newResults = methods.map((method) => {
-      try {
-        const result = encodeUtils[method as keyof typeof encodeUtils](text);
-        // Skip if result is an error message
-        if (result.includes("Error")) {
+    const newResults = methods
+      .map((method) => {
+        try {
+          const result = encodeUtils[method as keyof typeof encodeUtils](text);
+          // Skip if result is an error message
+          if (result.includes("Error")) {
+            return null;
+          }
+          return { method: method.toUpperCase(), result };
+        } catch {
           return null;
         }
-        return { method: method.toUpperCase(), result };
-      } catch {
-        return null;
-      }
-    }).filter(Boolean) as { method: string; result: string }[];
+      })
+      .filter(Boolean) as { method: string; result: string }[];
     setResults(newResults);
   }, [text]);
 

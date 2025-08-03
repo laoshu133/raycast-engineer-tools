@@ -40,7 +40,7 @@ export default function Command() {
     if (newResults.length === 0) {
       newResults.push(
         { title: filesizeUtils.bytesToHuman(text), subtitle: "As Bytes" },
-        { title: filesizeUtils.humanToBytes(text), subtitle: "As Human Readable" }
+        { title: filesizeUtils.humanToBytes(text), subtitle: "As Human Readable" },
       );
     }
 
