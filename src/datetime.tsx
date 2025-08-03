@@ -21,12 +21,22 @@ export default function Command() {
 
   useEffect(() => {
     if (!text.trim()) {
-      // Show current time when no input
-      const now = datetimeUtils.now();
-      const timestamp = datetimeUtils.dateToTimestamp(now);
+      // Show current time in multiple formats when no input
+      const now = new Date();
+      const isoString = datetimeUtils.now();
+      const timestamp = datetimeUtils.dateToTimestamp(isoString);
+      const localString = now.toLocaleString();
+      const unixTimestamp = Math.floor(now.getTime() / 1000).toString();
+      const dateString = now.toLocaleDateString();
+      const timeString = now.toLocaleTimeString();
+      
       setResults([
-        { title: now, subtitle: "Current ISO Date" },
-        { title: timestamp, subtitle: "Current Timestamp" }
+        { title: localString, subtitle: "Current Local Date/Time" },
+        { title: isoString, subtitle: "Current ISO Date" },
+        { title: timestamp, subtitle: "Current Timestamp (ms)" },
+        { title: unixTimestamp, subtitle: "Current Unix Timestamp (s)" },
+        { title: dateString, subtitle: "Current Date" },
+        { title: timeString, subtitle: "Current Time" },
       ]);
       return;
     }
@@ -49,7 +59,7 @@ export default function Command() {
     if (newResults.length === 0) {
       newResults.push(
         { title: datetimeUtils.timestampToDate(text), subtitle: "As Timestamp" },
-        { title: datetimeUtils.dateToTimestamp(text), subtitle: "As Date" }
+        { title: datetimeUtils.dateToTimestamp(text), subtitle: "As Date" },
       );
     }
 
@@ -63,24 +73,20 @@ export default function Command() {
 
   return (
     <List searchText={text} onSearchTextChange={setText}>
-      {text.trim() === "" ? (
-        <List.EmptyView title="Enter timestamp or date" description="Type timestamp (1609459200) or date (2021-01-01)" />
-      ) : (
-        results.map((result, index) => (
-          <List.Item
-            key={index}
-            title={result.title}
-            subtitle={result.subtitle}
-            actions={
-              <ActionPanel>
-                <Action title="Copy" onAction={() => handleAction(result.title)} />
-                <Action.Paste content={result.title} />
-                <Action.CopyToClipboard content={result.title} />
-              </ActionPanel>
-            }
-          />
-        ))
-      )}
+      {results.map((result, index) => (
+        <List.Item
+          key={index}
+          title={result.title}
+          subtitle={result.subtitle}
+          actions={
+            <ActionPanel>
+              <Action title="Copy" onAction={() => handleAction(result.title)} />
+              <Action.Paste content={result.title} />
+              <Action.CopyToClipboard content={result.title} />
+            </ActionPanel>
+          }
+        />
+      ))}
     </List>
   );
 }
