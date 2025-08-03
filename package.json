@@ -8,21 +8,72 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "hello-world",
-      "title": "Hello world",
-      "subtitle": "Hello World",
-      "description": "",
+      "name": "encode",
+      "title": "Encode",
+      "subtitle": "URL/Base64/Hex Encoding",
+      "description": "Encode text using URL, Base64, or Hex encoding",
+      "mode": "view"
+    },
+    {
+      "name": "decode",
+      "title": "Decode",
+      "subtitle": "URL/Base64/Hex/Unicode Decoding",
+      "description": "Decode text using URL, Base64, Hex, or Unicode decoding",
+      "mode": "view"
+    },
+    {
+      "name": "uuid",
+      "title": "UUID Generator",
+      "subtitle": "Generate UUID v4 \u0026 v7",
+      "description": "Generate single or batch UUID v4 and v7 strings",
+      "mode": "view"
+    },
+    {
+      "name": "typeid",
+      "title": "TypeID",
+      "subtitle": "TypeID Encode/Decode",
+      "description": "Encode UUIDs to TypeIDs and decode TypeIDs back to UUIDs",
+      "mode": "view"
+    },
+    {
+      "name": "hash",
+      "title": "Hash Generator",
+      "subtitle": "MD5/SHA1/SHA256",
+      "description": "Generate cryptographic hashes (MD5, SHA1, SHA256)",
+      "mode": "view"
+    },
+    {
+      "name": "datetime",
+      "title": "DateTime",
+      "subtitle": "Timestamp \u0026 Date Conversion",
+      "description": "Convert between timestamps and ISO dates",
+      "mode": "view"
+    },
+    {
+      "name": "filesize",
+      "title": "File Size",
+      "subtitle": "Bytes \u0026 Human Readable Conversion",
+      "description": "Convert between bytes and human-readable file sizes",
+      "mode": "view"
+    },
+    {
+      "name": "ip-lookup",
+      "title": "IP Lookup",
+      "subtitle": "IP Address Information",
+      "description": "Get detailed information about IP addresses",
       "mode": "view"
     }
   ],
   "dependencies": {
     "@raycast/api": "^1.102.3",
-    "@raycast/utils": "^1.17.0"
+    "@raycast/utils": "^1.17.0",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^2.0.4",
     "@types/node": "22.13.10",
     "@types/react": "19.0.10",
+    "@types/uuid": "^9.0.8",
     "eslint": "^9.22.0",
     "prettier": "^3.5.3",
     "typescript": "^5.8.2"
