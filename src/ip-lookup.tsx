@@ -1,31 +1,65 @@
-import { Action, ActionPanel, Form, showToast, Toast, Clipboard } from "@raycast/api";
-import { useState } from "react";
+import { Action, ActionPanel, List, showToast, Toast, Clipboard } from "@raycast/api";
+import { useState, useEffect } from "react";
 import { networkUtils } from "./utils/network";
+import { getSelectedText } from "@raycast/api";
 
 export default function Command() {
-  const [ipInfo, setIpInfo] = useState<string>("");
+  const [text, setText] = useState<string>("");
+  const [results, setResults] = useState<{ title: string; subtitle: string; details: string }[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const lookupIP = async (ip: string) => {
-    if (!ip.trim()) {
-      showToast(Toast.Style.Failure, "Please enter an IP address");
+  useEffect(() => {
+    async function getText() {
+      try {
+        const selectedText = await getSelectedText();
+        setText(selectedText);
+      } catch {
+        setText("");
+      }
+    }
+    getText();
+  }, []);
+
+  useEffect(() => {
+    if (!text.trim()) {
+      setResults([]);
+      return;
+    }
+
+    const ip = text.trim();
+    if (!networkUtils.isValidIP(ip)) {
+      setResults([
+        { title: "Invalid IP format", subtitle: "Enter valid IPv4 or IPv6", details: "" }
+      ]);
       return;
     }
 
     setLoading(true);
-    try {
-      const info = await networkUtils.getIPInfo(ip.trim());
-      setIpInfo(info);
-
-      if (!info.startsWith("Invalid") && !info.startsWith("Failed")) {
-        Clipboard.copy(info);
-        showToast(Toast.Style.Success, "IP information copied to clipboard");
+    networkUtils.getIPInfo(ip).then(info => {
+      if (info.startsWith("Error") || info.startsWith("Invalid")) {
+        setResults([
+          { title: info, subtitle: "Lookup failed", details: "" }
+        ]);
+      } else {
+        const lines = info.split('\n');
+        const results = lines.map(line => {
+          const [label, value] = line.split(': ');
+          return {
+            title: value || line,
+            subtitle: label || "Info",
+            details: info
+          };
+        });
+        setResults(results);
       }
-    } catch (error) {
-      showToast(Toast.Style.Failure, "Lookup failed", String(error));
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
+    });
+  }, [text]);
+
+  const handleAction = (result: string, details: string) => {
+    Clipboard.copy(result);
+    showToast(Toast.Style.Success, "IP info copied", result);
   };
 
   const getCurrentIP = async () => {
@@ -33,13 +67,7 @@ export default function Command() {
     try {
       const response = await fetch("https://api.ipify.org?format=json");
       const data = await response.json();
-      const info = await networkUtils.getIPInfo(data.ip);
-      setIpInfo(info);
-
-      if (!info.startsWith("Invalid") && !info.startsWith("Failed")) {
-        Clipboard.copy(info);
-        showToast(Toast.Style.Success, "Current IP information copied to clipboard");
-      }
+      setText(data.ip);
     } catch (error) {
       showToast(Toast.Style.Failure, "Failed to get current IP", String(error));
     } finally {
@@ -48,29 +76,30 @@ export default function Command() {
   };
 
   return (
-    <Form
-      isLoading={loading}
-      actions={
-        <ActionPanel>
-          <Action.SubmitForm title="Lookup IP" onSubmit={(values) => lookupIP(values.ip)} />
-          <Action title="Get Current IP" onAction={getCurrentIP} />
-          {ipInfo && !ipInfo.startsWith("Invalid") && !ipInfo.startsWith("Failed") && (
-            <>
-              <Action.CopyToClipboard content={ipInfo} />
-              <Action.Paste content={ipInfo} />
-            </>
-          )}
-        </ActionPanel>
-      }
-    >
-      <Form.TextField
-        id="ip"
-        title="IP Address"
-        placeholder="Enter IP address..."
-        info="Enter IPv4 or IPv6 address to lookup"
+    <List searchText={text} onSearchTextChange={setText} isLoading={loading}>
+      <List.EmptyView
+        title="Enter IP address"
+        description="Type IPv4/IPv6 address to lookup"
+        actions={
+          <ActionPanel>
+            <Action title="Get Current IP" onAction={getCurrentIP} />
+          </ActionPanel>
+        }
       />
-
-      {ipInfo && <Form.Description title="IP Information" text={ipInfo} />}
-    </Form>
+      {results.map((result, index) => (
+        <List.Item
+          key={index}
+          title={result.title}
+          subtitle={result.subtitle}
+          actions={
+            <ActionPanel>
+              <Action title="Copy" onAction={() => handleAction(result.title, result.details)} />
+              <Action.Paste content={result.title} />
+              <Action.CopyToClipboard content={result.details} />
+            </ActionPanel>
+          }
+        />
+      ))}
+    </List>
   );
 }

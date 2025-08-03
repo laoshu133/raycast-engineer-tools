@@ -1,49 +1,64 @@
-import { Action, ActionPanel, Form, showToast, Toast, Clipboard } from "@raycast/api";
-import { useState } from "react";
+import { Action, ActionPanel, List, showToast, Toast, Clipboard } from "@raycast/api";
+import { useState, useEffect } from "react";
 import { hashUtils } from "./utils/encoding";
-
-interface HashFormValues {
-  text: string;
-  method: "md5" | "sha1" | "sha256";
-}
+import { getSelectedText } from "@raycast/api";
 
 export default function Command() {
-  const [result, setResult] = useState<string>("");
+  const [text, setText] = useState<string>("");
+  const [results, setResults] = useState<{ method: string; result: string }[]>([]);
 
-  const handleHash = (values: HashFormValues) => {
-    try {
-      const hashed = hashUtils[values.method](values.text);
-      setResult(hashed);
-      Clipboard.copy(hashed);
-      showToast(Toast.Style.Success, "Hash generated and copied!");
-    } catch (error) {
-      showToast(Toast.Style.Failure, "Hash generation failed", String(error));
+  useEffect(() => {
+    async function getText() {
+      try {
+        const selectedText = await getSelectedText();
+        setText(selectedText);
+      } catch {
+        setText("");
+      }
     }
+    getText();
+  }, []);
+
+  useEffect(() => {
+    if (!text.trim()) return;
+
+    const methods = ["md5", "sha1", "sha256"];
+    const newResults = methods.map((method) => {
+      try {
+        const result = hashUtils[method as keyof typeof hashUtils](text);
+        return { method: method.toUpperCase(), result };
+      } catch {
+        return { method: method.toUpperCase(), result: "Error hashing" };
+      }
+    });
+    setResults(newResults);
+  }, [text]);
+
+  const handleHash = (method: string, result: string) => {
+    Clipboard.copy(result);
+    showToast(Toast.Style.Success, `${method} hash generated`, result);
   };
 
   return (
-    <Form
-      actions={
-        <ActionPanel>
-          <Action.SubmitForm title="Generate Hash" onSubmit={handleHash} />
-          {result && (
-            <>
-              <Action.CopyToClipboard content={result} />
-              <Action.Paste content={result} />
-            </>
-          )}
-        </ActionPanel>
-      }
-    >
-      <Form.TextArea id="text" title="Text to Hash" placeholder="Enter text to hash..." />
-
-      <Form.Dropdown id="method" title="Hash Method">
-        <Form.Dropdown.Item value="md5" title="MD5" />
-        <Form.Dropdown.Item value="sha1" title="SHA1" />
-        <Form.Dropdown.Item value="sha256" title="SHA256" />
-      </Form.Dropdown>
-
-      {result && <Form.Description title="Result" text={result} />}
-    </Form>
+    <List searchText={text} onSearchTextChange={setText}>
+      {text.trim() === "" ? (
+        <List.EmptyView title="Enter text to hash" description="Type any text to see hash options" />
+      ) : (
+        results.map(({ method, result }) => (
+          <List.Item
+            key={method}
+            title={result}
+            subtitle={`${method} hash`}
+            actions={
+              <ActionPanel>
+                <Action title="Copy" onAction={() => handleHash(method, result)} />
+                <Action.Paste content={result} />
+                <Action.CopyToClipboard content={result} />
+              </ActionPanel>
+            }
+          />
+        ))
+      )}
+    </List>
   );
 }

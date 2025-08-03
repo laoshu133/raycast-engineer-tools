@@ -3,72 +3,99 @@ import { useState } from "react";
 import { uuidUtils } from "./utils/uuid";
 
 export default function Command() {
-  const [generating, setGenerating] = useState(false);
+  const [results, setResults] = useState<{ title: string; uuid: string; type: string }[]>([]);
 
-  const generateUUIDv4 = () => {
-    const uuid = uuidUtils.v4();
-    Clipboard.copy(uuid);
-    showToast(Toast.Style.Success, "UUID v4 generated and copied!", uuid);
-  };
-
-  const generateUUIDv7 = () => {
-    const uuid = uuidUtils.v7();
-    Clipboard.copy(uuid);
-    showToast(Toast.Style.Success, "UUID v7 generated and copied!", uuid);
-  };
-
-  const generateMultiple = (count: number) => {
-    setGenerating(true);
+  const generateUUID = (type: "v4" | "v7", count: number = 1) => {
     const uuids = Array.from({ length: count }, (_, i) => ({
-      id: i.toString(),
-      title: uuidUtils.v4(),
-      type: "v4",
+      id: `${type}-${i}`,
+      title: type === "v4" ? uuidUtils.v4() : uuidUtils.v7(),
+      uuid: type === "v4" ? uuidUtils.v4() : uuidUtils.v7(),
+      type: type.toUpperCase()
     }));
 
-    // Copy all UUIDs separated by newlines
-    const allUUIDs = uuids.map((u) => u.title).join("\n");
-    Clipboard.copy(allUUIDs);
-    showToast(Toast.Style.Success, `${count} UUIDs generated and copied!`);
-    setGenerating(false);
+    setResults(uuids);
+    
+    if (count === 1) {
+      Clipboard.copy(uuids[0].uuid);
+      showToast(Toast.Style.Success, `${type.toUpperCase()} UUID generated`, uuids[0].uuid);
+    } else {
+      const allUUIDs = uuids.map(u => u.uuid).join('\n');
+      Clipboard.copy(allUUIDs);
+      showToast(Toast.Style.Success, `${count} ${type.toUpperCase()} UUIDs generated`, allUUIDs);
+    }
+  };
+
+  const copyUUID = (uuid: string) => {
+    Clipboard.copy(uuid);
+    showToast(Toast.Style.Success, "UUID copied", uuid);
   };
 
   return (
-    <List isLoading={generating}>
-      <List.Section title="Single UUID">
+    <List>
+      <List.Section title="Generate Single UUID">
         <List.Item
           title="Generate UUID v4"
           subtitle="Random UUID"
           actions={
             <ActionPanel>
-              <Action title="Generate V4" onAction={generateUUIDv4} />
+              <Action title="Generate v4" onAction={() => generateUUID("v4")} />
             </ActionPanel>
           }
         />
         <List.Item
           title="Generate UUID v7"
-          subtitle="Time-sorted UUID"
+          subtitle="Timestamp-sorted UUID"
           actions={
             <ActionPanel>
-              <Action title="Generate V7" onAction={generateUUIDv7} />
+              <Action title="Generate v7" onAction={() => generateUUID("v7")} />
             </ActionPanel>
           }
         />
       </List.Section>
 
-      <List.Section title="Batch Generate">
-        {[5, 10, 20, 50].map((count) => (
+      <List.Section title="Generate Multiple UUIDs">
+        {[5, 10, 20, 50].map(count => (
           <List.Item
-            key={count}
-            title={`Generate ${count} UUIDs`}
-            subtitle={`Create ${count} UUID v4 strings`}
+            key={`v4-${count}`}
+            title={`Generate ${count} UUID v4`}
             actions={
               <ActionPanel>
-                <Action title="Generate" onAction={() => generateMultiple(count)} />
+                <Action title="Generate" onAction={() => generateUUID("v4", count)} />
+              </ActionPanel>
+            }
+          />
+        ))}
+        {[5, 10, 20, 50].map(count => (
+          <List.Item
+            key={`v7-${count}`}
+            title={`Generate ${count} UUID v7`}
+            actions={
+              <ActionPanel>
+                <Action title="Generate" onAction={() => generateUUID("v7", count)} />
               </ActionPanel>
             }
           />
         ))}
       </List.Section>
+
+      {results.length > 0 && (
+        <List.Section title="Generated UUIDs">
+          {results.map((item) => (
+            <List.Item
+              key={item.id}
+              title={item.uuid}
+              subtitle={`${item.type} UUID`}
+              actions={
+                <ActionPanel>
+                  <Action title="Copy" onAction={() => copyUUID(item.uuid)} />
+                  <Action.Paste content={item.uuid} />
+                  <Action.CopyToClipboard content={item.uuid} />
+                </ActionPanel>
+              }
+            />
+          ))}
+        </List.Section>
+      )}
     </List>
   );
 }

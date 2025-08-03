@@ -1,58 +1,95 @@
-import { Action, ActionPanel, Form, showToast, Toast, Clipboard } from "@raycast/api";
-import { useState } from "react";
+import { Action, ActionPanel, List, showToast, Toast, Clipboard } from "@raycast/api";
+import { useState, useEffect } from "react";
 import { typeidUtils } from "./utils/typeid";
-
-interface TypeIDFormValues {
-  action: "encode" | "decode";
-  prefix: string;
-  uuid: string;
-  typeid: string;
-}
+import { uuidUtils } from "./utils/uuid";
+import { getSelectedText } from "@raycast/api";
 
 export default function Command() {
-  const [result, setResult] = useState<string>("");
+  const [text, setText] = useState<string>("");
+  const [results, setResults] = useState<{ title: string; subtitle: string; action: string }[]>([]);
 
-  const handleAction = (values: TypeIDFormValues) => {
-    try {
-      let output = "";
-      if (values.action === "encode") {
-        output = typeidUtils.encode(values.prefix, values.uuid || undefined);
-      } else {
-        output = typeidUtils.decode(values.typeid);
+  useEffect(() => {
+    async function getText() {
+      try {
+        const selectedText = await getSelectedText();
+        setText(selectedText);
+      } catch {
+        setText("");
       }
-
-      setResult(output);
-      Clipboard.copy(output);
-      showToast(Toast.Style.Success, `${values.action === "encode" ? "Encoded" : "Decoded"} and copied to clipboard!`);
-    } catch (error) {
-      showToast(Toast.Style.Failure, "TypeID operation failed", String(error));
     }
+    getText();
+  }, []);
+
+  useEffect(() => {
+    if (!text.trim()) return;
+
+    const newResults: { title: string; subtitle: string; action: string }[] = [];
+
+    // Encode as TypeID
+    const prefixes = ["user", "order", "file", "task", "event", "item"];
+    prefixes.forEach(prefix => {
+      try {
+        const result = typeidUtils.encode(prefix, text);
+        newResults.push({
+          title: result,
+          subtitle: `TypeID with prefix: ${prefix}`,
+          action: "encode"
+        });
+      } catch {
+        newResults.push({
+          title: "Error encoding",
+          subtitle: `Failed to encode with prefix: ${prefix}`,
+          action: "error"
+        });
+      }
+    });
+
+    // Decode TypeID
+    if (text.includes('_')) {
+      try {
+        const result = typeidUtils.decode(text);
+        newResults.push({
+          title: result,
+          subtitle: "Decoded UUID from TypeID",
+          action: "decode"
+        });
+      } catch {
+        newResults.push({
+          title: "Invalid TypeID",
+          subtitle: "Failed to decode TypeID",
+          action: "error"
+        });
+      }
+    }
+
+    setResults(newResults);
+  }, [text]);
+
+  const handleAction = (result: string) => {
+    Clipboard.copy(result);
+    showToast(Toast.Style.Success, "TypeID operation complete", result);
   };
 
   return (
-    <Form
-      actions={
-        <ActionPanel>
-          <Action.SubmitForm title="Execute" onSubmit={handleAction} />
-          {result && (
-            <>
-              <Action.CopyToClipboard content={result} />
-              <Action.Paste content={result} />
-            </>
-          )}
-        </ActionPanel>
-      }
-    >
-      <Form.Dropdown id="action" title="Action Type">
-        <Form.Dropdown.Item value="encode" title="Encode" />
-        <Form.Dropdown.Item value="decode" title="Decode" />
-      </Form.Dropdown>
-
-      <Form.TextField id="prefix" title="Prefix (for encoding)" placeholder="e.g., user, order" />
-      <Form.TextField id="uuid" title="UUID (for encoding)" placeholder="UUID to encode" />
-      <Form.TextField id="typeid" title="TypeID (for decoding)" placeholder="e.g., user_01H4K8Z9JFV4ZQ3Q2M0N8P1K2L" />
-
-      {result && <Form.Description title="Result" text={result} />}
-    </Form>
+    <List searchText={text} onSearchTextChange={setText}>
+      {text.trim() === "" ? (
+        <List.EmptyView title="Enter text or TypeID" description="Type UUID to encode as TypeID, or TypeID to decode to UUID" />
+      ) : (
+        results.map((result, index) => (
+          <List.Item
+            key={index}
+            title={result.title}
+            subtitle={result.subtitle}
+            actions={
+              <ActionPanel>
+                <Action title="Copy" onAction={() => handleAction(result.title)} />
+                <Action.Paste content={result.title} />
+                <Action.CopyToClipboard content={result.title} />
+              </ActionPanel>
+            }
+          />
+        ))
+      )}
+    </List>
   );
 }

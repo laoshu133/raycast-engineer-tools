@@ -1,50 +1,64 @@
-import { Action, ActionPanel, Form, showToast, Toast, Clipboard } from "@raycast/api";
-import { useState } from "react";
+import { Action, ActionPanel, List, showToast, Toast, Clipboard } from "@raycast/api";
+import { useState, useEffect } from "react";
 import { decodeUtils } from "./utils/encoding";
-
-interface DecodeFormValues {
-  text: string;
-  method: "url" | "base64" | "hex" | "unicode";
-}
+import { getSelectedText } from "@raycast/api";
 
 export default function Command() {
-  const [result, setResult] = useState<string>("");
+  const [text, setText] = useState<string>("");
+  const [results, setResults] = useState<{ method: string; result: string }[]>([]);
 
-  const handleDecode = (values: DecodeFormValues) => {
-    try {
-      const decoded = decodeUtils[values.method](values.text);
-      setResult(decoded);
-      Clipboard.copy(decoded);
-      showToast(Toast.Style.Success, "Decoded and copied to clipboard!");
-    } catch (error) {
-      showToast(Toast.Style.Failure, "Decoding failed", String(error));
+  useEffect(() => {
+    async function getText() {
+      try {
+        const selectedText = await getSelectedText();
+        setText(selectedText);
+      } catch {
+        setText("");
+      }
     }
+    getText();
+  }, []);
+
+  useEffect(() => {
+    if (!text.trim()) return;
+
+    const methods = ["url", "base64", "hex", "unicode"];
+    const newResults = methods.map((method) => {
+      try {
+        const result = decodeUtils[method as keyof typeof decodeUtils](text);
+        return { method: method.toUpperCase(), result };
+      } catch {
+        return { method: method.toUpperCase(), result: "Error decoding" };
+      }
+    });
+    setResults(newResults);
+  }, [text]);
+
+  const handleDecode = (method: string, result: string) => {
+    Clipboard.copy(result);
+    showToast(Toast.Style.Success, `${method} decoded`, result);
   };
 
   return (
-    <Form
-      actions={
-        <ActionPanel>
-          <Action.SubmitForm title="Decode" onSubmit={handleDecode} />
-          {result && (
-            <>
-              <Action.CopyToClipboard content={result} />
-              <Action.Paste content={result} />
-            </>
-          )}
-        </ActionPanel>
-      }
-    >
-      <Form.TextArea id="text" title="Text to Decode" placeholder="Enter text to decode..." />
-
-      <Form.Dropdown id="method" title="Decoding Method">
-        <Form.Dropdown.Item value="url" title="URL Decode" />
-        <Form.Dropdown.Item value="base64" title="Base64" />
-        <Form.Dropdown.Item value="hex" title="Hex" />
-        <Form.Dropdown.Item value="unicode" title="Unicode" />
-      </Form.Dropdown>
-
-      {result && <Form.Description title="Result" text={result} />}
-    </Form>
+    <List searchText={text} onSearchTextChange={setText}>
+      {text.trim() === "" ? (
+        <List.EmptyView title="Enter text to decode" description="Type any text to see decoding options" />
+      ) : (
+        results.map(({ method, result }) => (
+          <List.Item
+            key={method}
+            title={result}
+            subtitle={`${method} decoding`}
+            actions={
+              <ActionPanel>
+                <Action title="Copy" onAction={() => handleDecode(method, result)} />
+                <Action.Paste content={result} />
+                <Action.CopyToClipboard content={result} />
+              </ActionPanel>
+            }
+          />
+        ))
+      )}
+    </List>
   );
 }

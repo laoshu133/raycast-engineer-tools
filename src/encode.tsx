@@ -1,48 +1,68 @@
-import { Action, ActionPanel, Form, showToast, Toast, Clipboard } from "@raycast/api";
-import { useState } from "react";
+import { Action, ActionPanel, List, showToast, Toast, Clipboard, getPreferenceValues } from "@raycast/api";
+import { useState, useEffect } from "react";
 import { encodeUtils } from "./utils/encoding";
+import { getSelectedText } from "@raycast/api";
 
-interface EncodeFormValues {
-  text: string;
-  method: "url" | "base64" | "hex";
+interface Preferences {
+  defaultMethod: string;
 }
 
 export default function Command() {
-  const [result, setResult] = useState<string>("");
+  const [text, setText] = useState<string>("");
+  const [results, setResults] = useState<{ method: string; result: string }[]>([]);
 
-  const handleEncode = (values: EncodeFormValues) => {
-    try {
-      const encoded = encodeUtils[values.method](values.text);
-      setResult(encoded);
-      Clipboard.copy(encoded);
-      showToast(Toast.Style.Success, "Encoded and copied to clipboard!");
-    } catch (error) {
-      showToast(Toast.Style.Failure, "Encoding failed", String(error));
+  useEffect(() => {
+    async function getText() {
+      try {
+        const selectedText = await getSelectedText();
+        setText(selectedText);
+      } catch {
+        setText("");
+      }
     }
+    getText();
+  }, []);
+
+  useEffect(() => {
+    if (!text.trim()) return;
+
+    const methods = ["url", "base64", "hex"];
+    const newResults = methods.map((method) => {
+      try {
+        const result = encodeUtils[method as keyof typeof encodeUtils](text);
+        return { method: method.toUpperCase(), result };
+      } catch {
+        return { method: method.toUpperCase(), result: "Error encoding" };
+      }
+    });
+    setResults(newResults);
+  }, [text]);
+
+  const handleEncode = (method: string, result: string) => {
+    Clipboard.copy(result);
+    showToast(Toast.Style.Success, `${method} encoded`, result);
   };
 
   return (
-    <Form
-      actions={
-        <ActionPanel>
-          <Action.SubmitForm title="Encode" onSubmit={handleEncode} />
-          {result && (
-            <>
-              <Action.CopyToClipboard content={result} />
-              <Action.Paste content={result} />
-            </>
-          )}
-        </ActionPanel>
-      }
-    >
-      <Form.TextArea id="text" title="Text to Encode" placeholder="Enter text to encode..." />
-      <Form.Dropdown id="method" title="Encoding Method">
-        <Form.Dropdown.Item value="url" title="URL Encode" />
-        <Form.Dropdown.Item value="base64" title="Base64" />
-        <Form.Dropdown.Item value="hex" title="Hex" />
-      </Form.Dropdown>
-
-      {result && <Form.Description title="Result" text={result} />}
-    </Form>
+    <List searchText={text} onSearchTextChange={setText}>
+      {text.trim() === "" ? (
+        <List.EmptyView title="Enter text to encode" description="Type any text to see encoding options" />
+      ) : (
+        results.map(({ method, result }) => (
+          <List.Item
+            key={method}
+            title={result}
+            subtitle={`${method} encoding`}
+            actions={
+              <ActionPanel>
+                <Action title="Copy" onAction={() => handleEncode(method, result)} />
+                <Action.Paste content={result} />
+                <Action.CopyToClipboard content={result} />
+              </ActionPanel>
+            }
+          />
+        ))
+      )}
+    </List>
   );
 }
