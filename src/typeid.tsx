@@ -1,7 +1,6 @@
 import { Action, ActionPanel, List, showToast, Toast, Clipboard } from "@raycast/api";
 import { useState, useEffect } from "react";
 import { typeidUtils } from "./utils/typeid";
-import { uuidUtils } from "./utils/uuid";
 import { getSelectedText } from "@raycast/api";
 
 export default function Command() {

@@ -133,7 +133,7 @@ export default function Command() {
     setLoading(true);
     try {
       const response = await fetch("https://api.ipify.org?format=json");
-      const data: { ip: string } = await response.json();
+      const data = (await response.json()) as { ip: string };
       setText(data.ip);
     } catch (error) {
       showToast(Toast.Style.Failure, "Failed to get current IP", String(error));

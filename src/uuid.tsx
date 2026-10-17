@@ -3,12 +3,11 @@ import { useState } from "react";
 import { uuidUtils } from "./utils/uuid";
 
 export default function Command() {
-  const [results, setResults] = useState<{ title: string; uuid: string; type: string }[]>([]);
+  const [results, setResults] = useState<{ id: string; uuid: string; type: string }[]>([]);
 
   const generateUUID = (type: "v4" | "v7", count: number = 1) => {
     const uuids = Array.from({ length: count }, (_, i) => ({
       id: `${type}-${i}`,
-      title: type === "v4" ? uuidUtils.v4() : uuidUtils.v7(),
       uuid: type === "v4" ? uuidUtils.v4() : uuidUtils.v7(),
       type: type.toUpperCase(),
     }));

@@ -22,7 +22,7 @@ export const filesizeUtils = {
     const [, num, unit] = match;
     const value = parseFloat(num);
 
-    const multipliers = {
+    const multipliers: Record<string, number> = {
       b: 1,
       B: 1,
       k: 1024,

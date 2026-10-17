@@ -29,7 +29,7 @@ export default function Command() {
       const unixTimestamp = Math.floor(now.getTime() / 1000).toString();
       const dateString = now.toLocaleDateString();
       const timeString = now.toLocaleTimeString();
-      
+
       setResults([
         { title: localString, subtitle: "Current Local Date/Time" },
         { title: isoString, subtitle: "Current ISO Date" },
