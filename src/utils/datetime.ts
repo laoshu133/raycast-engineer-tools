@@ -13,7 +13,7 @@ export const datetimeUtils = {
       date = new Date(ts);
     }
 
-    return date.toISOString();
+    return Number.isNaN(date.getTime()) ? "Invalid timestamp" : date.toISOString();
   },
 
   dateToTimestamp: (dateStr: string): string => {

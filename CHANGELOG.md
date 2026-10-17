@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Clipboard Input on Entry
+
+- Read clipboard text once per entry for all seven text-input tools and display it as the initial selected input, ready to replace by typing.
+- Mount the input after the read completes, reuse the read across effect replays, and ignore completion after leaving the tool. Empty or unavailable clipboard text opens an empty input.
+- Replace automatic selected-text reads, fixing the IP startup flash and preventing late reads from clearing or overwriting input.
+- Share complete input storage and search-field echo protection, preserving large and multiline clipboard text.
+- Debounce IP queries and ignore stale results when input changes; avoid duplicate lookups when selecting a domain address.
+- Handle out-of-range clipboard timestamps without crashing and shorten TypeID list previews while keeping copy and paste complete.
+- Add regression checks for startup lifecycle, empty/failed clipboard reads, input replacement, and large Unicode content.
+
 ### Space Navigation
 
 - Document Raycast's exact alias + Space navigation for opening a tool and displaying results while typing, without pressing Return. Configure aliases in Raycast settings; no launch arguments are needed.

@@ -7,14 +7,14 @@ import {
   Keyboard,
   List,
   Toast,
-  getSelectedText,
   showToast,
   useNavigation,
 } from "@raycast/api";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { transformText, type Transform, type TransformResult } from "../utils/encoding";
-import { previewText, SEARCH_INPUT_LIMIT, SEARCH_PREVIEW_LENGTH } from "../utils/text-preview";
+import { previewText, SEARCH_INPUT_LIMIT } from "../utils/text-preview";
 import { readClipboardText } from "../utils/clipboard";
+import { useTextInput } from "../hooks/use-text-input";
 
 function TextEditor({ text, onSubmit }: { text: string; onSubmit: (text: string) => void }) {
   const { pop } = useNavigation();
@@ -51,45 +51,13 @@ function TextEditor({ text, onSubmit }: { text: string; onSubmit: (text: string)
   );
 }
 
-type Props = { operation: "encode" | "decode" | "hash"; transforms: readonly Transform[] };
+type Props = { initialText: string; operation: "encode" | "decode" | "hash"; transforms: readonly Transform[] };
 
-export function TextTransformCommand({ operation, transforms }: Props) {
-  const [text, setText] = useState("");
-  const [searchText, setSearchText] = useState("");
+export function TextTransformCommand({ initialText, operation, transforms }: Props) {
+  const { text, searchText, setInput, onSearchTextChange, searchLimitReached, revision } = useTextInput(initialText);
   const [results, setResults] = useState<TransformResult[]>([]);
   const [pending, setPending] = useState(false);
-  const [searchLimitReached, setSearchLimitReached] = useState(false);
-  const revision = useRef(0);
-  const nativeSearchText = useRef("");
-  const expectedSearchEcho = useRef<string | undefined>(undefined);
   const { push } = useNavigation();
-
-  const setInput = (value: string, imported = false) => {
-    revision.current++;
-    setText(value);
-    setSearchLimitReached(!imported && value.length >= SEARCH_INPUT_LIMIT);
-    // Large/multiline input stays out of the single-line search field.
-    // The full value remains the source for every conversion and action.
-    const displayedText = value.length > SEARCH_PREVIEW_LENGTH || /[\r\n]/.test(value) ? "" : value;
-    if (displayedText !== nativeSearchText.current) expectedSearchEcho.current = displayedText;
-    nativeSearchText.current = displayedText;
-    setSearchText(displayedText);
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-    const initialRevision = revision.current;
-    getSelectedText()
-      .then((value) => {
-        if (!cancelled && revision.current === initialRevision && value.length > 0) setInput(value, true);
-      })
-      .catch(() => {
-        // Selection is optional; retain anything the user has already entered.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     setResults([]);
@@ -178,17 +146,7 @@ export function TextTransformCommand({ operation, transforms }: Props) {
     <List
       filtering={false}
       searchText={searchText}
-      onSearchTextChange={(value) => {
-        nativeSearchText.current = value;
-        // Raycast can echo programmatic changes back through this callback.
-        // Clearing only the displayed field must not erase the full input.
-        if (value === expectedSearchEcho.current) {
-          expectedSearchEcho.current = undefined;
-          return;
-        }
-        expectedSearchEcho.current = undefined;
-        setInput(value);
-      }}
+      onSearchTextChange={onSearchTextChange}
       searchBarPlaceholder={`Enter text to ${operation}, or use ⌘R to read clipboard`}
       isLoading={pending}
       actions={<ActionPanel>{inputActions}</ActionPanel>}

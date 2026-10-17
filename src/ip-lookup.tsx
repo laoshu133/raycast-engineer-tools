@@ -1,68 +1,59 @@
+import { withClipboardInput, type InitialInputProps } from "./components/with-clipboard-input";
+import { readClipboardText } from "./utils/clipboard";
+import { useTextInput } from "./hooks/use-text-input";
 import { Action, ActionPanel, List, showToast, Toast, Clipboard } from "@raycast/api";
 import { useState, useEffect } from "react";
 import { networkUtils } from "./utils/network";
-import { getSelectedText } from "@raycast/api";
-import dns from "dns";
-import { promisify } from "util";
+import dns from "node:dns";
+import { promisify } from "node:util";
 
 const resolve4 = promisify(dns.resolve4);
 const resolve6 = promisify(dns.resolve6);
 
-export default function Command() {
-  const [text, setText] = useState<string>("");
+function isValidDomain(domain: string): boolean {
+  const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?(?:\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?)*$/;
+  return domainRegex.test(domain) && domain.includes(".");
+}
+
+function Command({ initialText }: InitialInputProps) {
+  const { text, searchText, setInput, onSearchTextChange, revision } = useTextInput(initialText);
   const [results, setResults] = useState<{ title: string; subtitle: string; details: string; ip?: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [domainResults, setDomainResults] = useState<{ title: string; subtitle: string; ip: string }[]>([]);
   const [currentView, setCurrentView] = useState<"main" | "domain">("main");
 
   useEffect(() => {
-    async function getText() {
-      try {
-        const selectedText = await getSelectedText();
-        setText(selectedText);
-      } catch {
-        setText("");
-      }
-    }
-    getText();
-  }, []);
-
-  useEffect(() => {
-    if (!text.trim()) {
-      setResults([]);
-      setDomainResults([]);
-      setCurrentView("main");
-      return;
-    }
-
+    let active = true;
+    const isCurrent = () => active;
+    setResults([]);
+    setDomainResults([]);
+    setCurrentView("main");
+    setLoading(false);
     const input = text.trim();
+    if (!input) return;
 
-    // Check if input is an IP address
-    if (networkUtils.isValidIP(input)) {
-      setLoading(true);
-      lookupIPInfo(input);
+    const isIP = networkUtils.isValidIP(input);
+    if (!isIP && !isValidDomain(input)) {
+      setResults([{ title: "Invalid format", subtitle: "Enter valid IP or domain name", details: "" }]);
       return;
     }
 
-    // Check if input is a domain name
-    if (isValidDomain(input)) {
-      setLoading(true);
-      resolveDomain(input);
-      return;
-    }
-
-    // Invalid format
-    setResults([{ title: "Invalid format", subtitle: "Enter valid IP or domain name", details: "" }]);
+    setLoading(true);
+    // Debounce typing and cancel effect replays before issuing a request.
+    const timer = setTimeout(() => {
+      if (isIP) lookupIPInfo(input, isCurrent);
+      else resolveDomain(input, isCurrent);
+    }, 150);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [text]);
 
-  const isValidDomain = (domain: string): boolean => {
-    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?(?:\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?)*$/;
-    return domainRegex.test(domain) && domain.includes(".");
-  };
-
-  const lookupIPInfo = async (ip: string): Promise<void> => {
+  const lookupIPInfo = async (ip: string, isCurrent: () => boolean): Promise<void> => {
     try {
       const info = await networkUtils.getIPInfo(ip);
+      if (!isCurrent()) return;
       if (info.startsWith("Error") || info.startsWith("Invalid")) {
         setResults([{ title: info, subtitle: "Lookup failed", details: "" }]);
       } else {
@@ -78,19 +69,20 @@ export default function Command() {
         setResults(results);
       }
     } catch (error) {
-      setResults([{ title: "Lookup failed", subtitle: String(error), details: "" }]);
+      if (isCurrent()) setResults([{ title: "Lookup failed", subtitle: String(error), details: "" }]);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   };
 
-  const resolveDomain = async (domain: string): Promise<void> => {
+  const resolveDomain = async (domain: string, isCurrent: () => boolean): Promise<void> => {
     try {
       const [ipv4Addresses, ipv6Addresses] = await Promise.allSettled([
         resolve4(domain).catch(() => []),
         resolve6(domain).catch(() => []),
       ]);
 
+      if (!isCurrent()) return;
       const addresses = [
         ...(ipv4Addresses.status === "fulfilled" ? ipv4Addresses.value : []),
         ...(ipv6Addresses.status === "fulfilled" ? ipv6Addresses.value : []),
@@ -111,17 +103,14 @@ export default function Command() {
       setDomainResults(domainResults);
       setCurrentView("domain");
     } catch (error) {
-      setResults([{ title: "Domain resolution failed", subtitle: String(error), details: "" }]);
+      if (isCurrent()) setResults([{ title: "Domain resolution failed", subtitle: String(error), details: "" }]);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   };
 
-  const handleDomainIPClick = async (ip: string) => {
-    setLoading(true);
-    setText(ip); // Update search text to show the IP
-    await lookupIPInfo(ip);
-    setCurrentView("main");
+  const handleDomainIPClick = (ip: string) => {
+    setInput(ip, true);
   };
 
   const handleAction = (result: string) => {
@@ -130,20 +119,28 @@ export default function Command() {
   };
 
   const getCurrentIP = async () => {
+    const requestRevision = ++revision.current;
     setLoading(true);
     try {
       const response = await fetch("https://api.ipify.org?format=json");
       const data = (await response.json()) as { ip: string };
-      setText(data.ip);
+      if (revision.current === requestRevision) setInput(data.ip, true);
     } catch (error) {
-      showToast(Toast.Style.Failure, "Failed to get current IP", String(error));
+      if (revision.current === requestRevision)
+        showToast(Toast.Style.Failure, "Failed to get current IP", String(error));
     } finally {
-      setLoading(false);
+      if (revision.current === requestRevision) setLoading(false);
     }
   };
 
   return (
-    <List searchText={text} onSearchTextChange={setText} isLoading={loading}>
+    <List
+      filtering={false}
+      searchText={searchText}
+      onSearchTextChange={onSearchTextChange}
+      searchBarPlaceholder="Enter an IP address or domain"
+      isLoading={loading}
+    >
       {currentView === "domain" ? (
         <>
           <List.EmptyView title={`Domain: ${text}`} description="Select an IP address to view detailed information" />
@@ -192,3 +189,5 @@ export default function Command() {
     </List>
   );
 }
+
+export default withClipboardInput(Command, readClipboardText);

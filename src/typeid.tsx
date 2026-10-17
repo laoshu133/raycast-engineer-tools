@@ -1,23 +1,14 @@
+import { withClipboardInput, type InitialInputProps } from "./components/with-clipboard-input";
+import { readClipboardText } from "./utils/clipboard";
+import { useTextInput } from "./hooks/use-text-input";
 import { Action, ActionPanel, List, showToast, Toast, Clipboard } from "@raycast/api";
 import { useState, useEffect } from "react";
 import { typeidUtils } from "./utils/typeid";
-import { getSelectedText } from "@raycast/api";
+import { previewText } from "./utils/text-preview";
 
-export default function Command() {
-  const [text, setText] = useState<string>("");
+function Command({ initialText }: InitialInputProps) {
+  const { text, searchText, onSearchTextChange } = useTextInput(initialText);
   const [results, setResults] = useState<{ title: string; subtitle: string; action: string }[]>([]);
-
-  useEffect(() => {
-    async function getText() {
-      try {
-        const selectedText = await getSelectedText();
-        setText(selectedText);
-      } catch {
-        setText("");
-      }
-    }
-    getText();
-  }, []);
 
   useEffect(() => {
     if (!text.trim()) return;
@@ -70,7 +61,7 @@ export default function Command() {
   };
 
   return (
-    <List searchText={text} onSearchTextChange={setText}>
+    <List searchText={searchText} onSearchTextChange={onSearchTextChange}>
       {text.trim() === "" ? (
         <List.EmptyView
           title="Enter text or TypeID"
@@ -80,7 +71,7 @@ export default function Command() {
         results.map((result, index) => (
           <List.Item
             key={index}
-            title={result.title}
+            title={previewText(result.title).text}
             subtitle={result.subtitle}
             actions={
               <ActionPanel>
@@ -95,3 +86,5 @@ export default function Command() {
     </List>
   );
 }
+
+export default withClipboardInput(Command, readClipboardText);

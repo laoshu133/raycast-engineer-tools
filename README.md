@@ -16,6 +16,10 @@ To open a tool with Space instead of Return, assign an **Alias** in Raycast Sett
 
 Aliases are local Raycast settings and are not declared by this extension's manifest. No launch arguments are needed: an argument field would require Return before showing the result list. Raycast introduced alias + Space command navigation in [v1.3.0](https://www.raycast.com/changelog/macos-v1%2F1-3-0); Encode and Decode were verified with this workflow on Raycast 2.8.2.
 
+Encode, Decode, Hash, DateTime, File Size, TypeID, and IP Lookup read the current clipboard **once each time you enter the tool**. Non-empty text fills the input and is selected automatically, so you can view results immediately or type to replace it. An empty or unavailable clipboard opens an empty input. Startup no longer reads selected text from another app, and changing the clipboard while the tool is open does not overwrite your input.
+
+Long or multiline clipboard text is kept in full outside the search field, as described below; typing starts a replacement. The short-input selection uses Raycast's first List render behavior, without simulated keyboard shortcuts or extra automation permissions. IP Lookup debounces queries and ignores results belonging to a previous input.
+
 Encode, Decode, and Hash support these shortcuts:
 
 | Shortcut | Action                                   |

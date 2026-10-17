@@ -1,23 +1,13 @@
+import { withClipboardInput, type InitialInputProps } from "./components/with-clipboard-input";
+import { readClipboardText } from "./utils/clipboard";
+import { useTextInput } from "./hooks/use-text-input";
 import { Action, ActionPanel, List, showToast, Toast, Clipboard } from "@raycast/api";
 import { useState, useEffect } from "react";
 import { filesizeUtils } from "./utils/filesize";
-import { getSelectedText } from "@raycast/api";
 
-export default function Command() {
-  const [text, setText] = useState<string>("");
+function Command({ initialText }: InitialInputProps) {
+  const { text, searchText, onSearchTextChange } = useTextInput(initialText);
   const [results, setResults] = useState<{ title: string; subtitle: string }[]>([]);
-
-  useEffect(() => {
-    async function getText() {
-      try {
-        const selectedText = await getSelectedText();
-        setText(selectedText);
-      } catch {
-        setText("");
-      }
-    }
-    getText();
-  }, []);
 
   useEffect(() => {
     if (!text.trim()) return;
@@ -53,7 +43,7 @@ export default function Command() {
   };
 
   return (
-    <List searchText={text} onSearchTextChange={setText}>
+    <List searchText={searchText} onSearchTextChange={onSearchTextChange}>
       {text.trim() === "" ? (
         <List.EmptyView title="Enter file size" description="Type bytes (1024) or human readable (1.5GB)" />
       ) : (
@@ -75,3 +65,5 @@ export default function Command() {
     </List>
   );
 }
+
+export default withClipboardInput(Command, readClipboardText);
