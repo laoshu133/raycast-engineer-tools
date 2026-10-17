@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### File Content Encoding and Hashing
+
+- Recognize single Finder clipboard files and local file paths in Encode and Hash, including clipboard-on-entry and manual clipboard refresh.
+- Add a file Base64 item that encodes and copies only on action, with Shift+Return for Data URLs and extension-based MIME detection.
+- Add MD5/SHA1/SHA256 file-content actions using streamed binary reads. Keep path-text transformations available separately.
+- Stream file contents only after execution; allow cancellation, stop pending work when leaving the file, and reject changed or unavailable files without copying a partial result.
+- Limit Base64 files to 32 MiB, keep Hash streaming without that limit, and explicitly report unsupported directories or multiple files.
+- Package a universal macOS pasteboard reader built from native source to distinguish real file URLs from large-text history artifacts.
+- Cover native clipboard types, file paths, binary content, MIME fallback, size limits, action-driven copying, and cancelled/failed clipboard writes with regression tests.
+
 ### Reliable IP Lookup
 
 - Use ipwho.is as the primary HTTPS lookup service, falling back to ipapi.co when a request fails, is rate limited, or returns an error payload.

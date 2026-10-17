@@ -13,8 +13,11 @@ import {
 import { useEffect, useState } from "react";
 import { transformText, type Transform, type TransformResult } from "../utils/encoding";
 import { previewText, SEARCH_INPUT_LIMIT } from "../utils/text-preview";
-import { readClipboardText } from "../utils/clipboard";
+import { readClipboardInput, readClipboardText } from "../utils/clipboard";
 import { useTextInput } from "../hooks/use-text-input";
+import { useFileInput } from "../hooks/use-file-input";
+import { FileTransformItems } from "./file-transform-items";
+import type { InitialInputProps } from "./with-clipboard-input";
 
 function TextEditor({ text, onSubmit }: { text: string; onSubmit: (text: string) => void }) {
   const { pop } = useNavigation();
@@ -51,10 +54,24 @@ function TextEditor({ text, onSubmit }: { text: string; onSubmit: (text: string)
   );
 }
 
-type Props = { initialText: string; operation: "encode" | "decode" | "hash"; transforms: readonly Transform[] };
+type Props = InitialInputProps & { operation: "encode" | "decode" | "hash"; transforms: readonly Transform[] };
 
-export function TextTransformCommand({ initialText, operation, transforms }: Props) {
-  const { text, searchText, setInput, onSearchTextChange, searchLimitReached, revision } = useTextInput(initialText);
+export function TextTransformCommand({ initialText, initialFiles, operation, transforms }: Props) {
+  const {
+    text,
+    searchText,
+    setInput: setTextInput,
+    onSearchTextChange,
+    searchLimitReached,
+    revision,
+  } = useTextInput(initialText);
+  const [clipboardFiles, setClipboardFiles] = useState({ files: initialFiles, revision: 0 });
+  const setInput = (value: string, imported = false) => {
+    setTextInput(value, imported);
+    setClipboardFiles({ files: undefined, revision: revision.current });
+  };
+  const selectedFiles = clipboardFiles.revision === revision.current ? clipboardFiles.files : undefined;
+  const fileInput = useFileInput(text, selectedFiles, operation !== "decode" && !searchLimitReached);
   const [results, setResults] = useState<TransformResult[]>([]);
   const [pending, setPending] = useState(false);
   const { push } = useNavigation();
@@ -79,13 +96,15 @@ export function TextTransformCommand({ initialText, operation, transforms }: Pro
   const readClipboard = async () => {
     const requestRevision = ++revision.current;
     try {
-      const value = await readClipboardText();
+      const value =
+        operation === "decode" ? { text: await readClipboardText(), files: undefined } : await readClipboardInput();
       if (revision.current !== requestRevision) return;
-      if (value === undefined || value.length === 0) {
-        await showToast(Toast.Style.Failure, "Clipboard has no text");
+      if (!value.text && !value.files?.length) {
+        await showToast(Toast.Style.Failure, "Clipboard has no text or file");
         return;
       }
-      setInput(value, true);
+      setInput(value.text ?? "", true);
+      setClipboardFiles({ files: value.files, revision: revision.current });
     } catch (error) {
       await showToast(Toast.Style.Failure, "Could not read clipboard", String(error));
     }
@@ -131,7 +150,7 @@ export function TextTransformCommand({ initialText, operation, transforms }: Pro
           push(<TextEditor text={text} onSubmit={(value) => setInput(value, true)} />);
         }}
       />
-      {text.length > 0 && (
+      {(text.length > 0 || !!selectedFiles?.length) && (
         <Action
           title="Clear Input"
           icon={Icon.XMarkCircle}
@@ -148,7 +167,7 @@ export function TextTransformCommand({ initialText, operation, transforms }: Pro
       searchText={searchText}
       onSearchTextChange={onSearchTextChange}
       searchBarPlaceholder={`Enter text to ${operation}, or use ⌘R to read clipboard`}
-      isLoading={pending}
+      isLoading={pending || fileInput.checking}
       actions={<ActionPanel>{inputActions}</ActionPanel>}
     >
       <List.EmptyView
@@ -166,8 +185,22 @@ export function TextTransformCommand({ initialText, operation, transforms }: Pro
         }
         actions={<ActionPanel>{inputActions}</ActionPanel>}
       />
+      {fileInput.file && operation !== "decode" && (
+        <FileTransformItems
+          key={fileInput.file.path}
+          file={fileInput.file}
+          operation={operation}
+          inputActions={inputActions}
+        />
+      )}
+      {fileInput.error && (
+        <List.Section title="File Content">
+          <List.Item title={fileInput.error} icon={Icon.Warning} actions={<ActionPanel>{inputActions}</ActionPanel>} />
+        </List.Section>
+      )}
       <List.Section title={text.length > 0 ? `Input: ${Buffer.byteLength(text).toLocaleString()} bytes` : undefined}>
         {!searchLimitReached &&
+          !fileInput.checking &&
           results.map((result) => {
             const preview = previewText(result.value ?? result.error);
             return (

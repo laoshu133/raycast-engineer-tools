@@ -94,6 +94,25 @@ test("clipboard initialization preserves complete multiline Unicode text", async
   await act(async () => view.unmount());
 });
 
+test("file clipboard metadata survives initialization without turning plain text into a file", async () => {
+  let reads = 0;
+  const Command = withClipboardInput(
+    (props: InitialInputProps) => createElement("input", props),
+    async () => {
+      reads++;
+      return { text: "/tmp/中文 file.png", files: ["/tmp/中文 file.png"] };
+    },
+  );
+  let view!: ReactTestRenderer;
+  await act(async () => {
+    view = create(createElement(StrictMode, null, createElement(Command)));
+  });
+  assert.equal(reads, 1);
+  assert.equal(view.root.findByType("input").props.initialText, "/tmp/中文 file.png");
+  assert.deepEqual(view.root.findByType("input").props.initialFiles, ["/tmp/中文 file.png"]);
+  await act(async () => view.unmount());
+});
+
 test("arbitrary clipboard timestamps outside the date range return an error instead of crashing", () => {
   for (const value of ["9".repeat(100_000), "8640000000000001"]) {
     assert.equal(datetimeUtils.timestampToDate(value), "Invalid timestamp");

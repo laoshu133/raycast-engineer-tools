@@ -38,6 +38,18 @@ On macOS, clipboard import uses `/usr/bin/pbpaste` with an explicit UTF-8 locale
 
 Verified in Raycast: importing 1,000,003 bytes, copying the complete 1,333,340-byte Base64 result, decoding it, and copying it back produced the original text byte for byte, including its final marker. Chinese and emoji clipboard imports were also verified with the UTF-8 locale.
 
+### File Content in Encode and Hash
+
+Encode and Hash recognize a single file copied in Finder, including the automatic clipboard read on entry and `⌘R`. You can also enter an absolute path, `~/` path, or local `file://` URL; quoted paths and spaces are supported. The **File Content** section appears before the text results. Existing text results continue to operate on the path string.
+
+- **Encode** shows an **Encode File Content as Base64** item, without a content preview. Press `↵` to encode the original file bytes and copy Base64, or `⇧↵` to copy a Data URL (`data:<mime>;base64,...`). Both actions are also available in the action panel. Shift-click is not supported.
+- **Hash** shows **Copy File MD5**, **Copy File SHA1**, and **Copy File SHA256**. Execute an item to hash the original bytes and copy the digest.
+- Listing a file reads metadata only. Contents are streamed on action, with progress and cancellation. Changing input or leaving the tool cancels pending work. Failed or cancelled reads do not write a result to the clipboard.
+- Base64 and Data URL encoding support files up to **32 MiB**. Hash streams files without that size limit. Copied folders and multiple copied files show an explicit message. Files deleted, changed during reading, or unavailable due to permissions report an error. Ordinary text such as `/api/users` continues to work when it does not identify a regular file.
+- Data URL MIME types come from the file extension; unknown extensions use `application/octet-stream`.
+
+On macOS these two commands use a small native helper to read the current pasteboard's file URL types and UTF-8 text in one snapshot. It does not consult clipboard history, so large text is not mistaken for a history-backed temporary file. The helper ships as a universal Intel/Apple Silicon executable and needs no compiler or Apple Events permission at runtime. Text import retains the 64 MiB limit.
+
 ### 🆔 **ID Generation**
 
 - **UUID Generator**: Generate both UUID v4 (random) and UUID v7 (time-ordered) identifiers
@@ -84,6 +96,7 @@ Verified in Raycast: importing 1,000,003 bytes, copying the complete 1,333,340-b
 ### Prerequisites
 
 - Node.js **24.x** (`nvm use`; the repository includes `.nvmrc`)
+- macOS with Xcode Command Line Tools for building the clipboard helper (`xcode-select --install`)
 - npm or yarn
 - Raycast account for testing
 
@@ -117,6 +130,8 @@ npm run build -- --environment dist
 Development uses Node 24, Node 24 type definitions, ES modules, and an ES2024 TypeScript target. Raycast owns the extension runtime: the installed Raycast 2.8.2 bundles Node **22.23.3**, and this project cannot change it with `engines` or `.nvmrc`. Runtime code therefore uses APIs supported by that host, and Raycast's bundler controls the executable JavaScript target. Node 24 runs the development tools and native `.ts` tests without a separate test compiler.
 
 For local installation, run `npm run dev` once to register the extension, then stop it and run `npm run build -- --environment dist`. Raycast keeps the registered commands and the production bundles in `~/.config/raycast/extensions/engineer-tools/`; no Store publication is needed.
+
+The npm build/dev scripts compile `native/clipboard-reader.m` into the ignored `assets/clipboard-reader` binary before running Raycast. Commit the native source and build script; the generated binary is packaged with the extension assets. Native clipboard regression tests use an isolated pasteboard and leave the system clipboard unchanged.
 
 ### Project Structure
 
