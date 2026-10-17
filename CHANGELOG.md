@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Reliable IP Lookup
+
+- Use ipwho.is as the primary HTTPS lookup service, falling back to ipapi.co when a request fails, is rate limited, or returns an error payload.
+- Cache successful lookups for five minutes (up to 100 addresses), cancel requests for old input, and limit each service request to five seconds.
+- Display the result source, omit unavailable fields, and show actionable failure details with a Retry Lookup action instead of treating errors as copyable IP data.
+- Accept standard compressed IPv6 addresses and validate current-IP responses.
+- Add regression coverage for provider fallback, API errors, cache expiry, cancellation, and IPv4/IPv6 validation.
+
 ### Clipboard Input on Entry
 
 - Read clipboard text once per entry for all seven text-input tools and display it as the initial selected input, ready to replace by typing.

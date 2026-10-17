@@ -58,6 +58,7 @@ Verified in Raycast: importing 1,000,003 bytes, copying the complete 1,333,340-b
 ### 🌐 **Network Tools**
 
 - **IP Lookup**: Get detailed information about IP addresses including location, ISP, and ASN data
+- Queries ipwho.is over HTTPS, with ipapi.co as a fallback. Successful results are cached for five minutes (up to 100 addresses); each service request has a five-second timeout. The list shows the data source, and failures show the reason with a **Retry Lookup** action. Both IPv4 and compressed IPv6 are supported.
 
 ## 🚀 Quick Start
 

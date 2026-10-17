@@ -19,16 +19,22 @@ function Command({ initialText }: InitialInputProps) {
   const { text, searchText, setInput, onSearchTextChange, revision } = useTextInput(initialText);
   const [results, setResults] = useState<{ title: string; subtitle: string; details: string; ip?: string }[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string>();
+  const [source, setSource] = useState<string>();
+  const [retry, setRetry] = useState(0);
   const [domainResults, setDomainResults] = useState<{ title: string; subtitle: string; ip: string }[]>([]);
   const [currentView, setCurrentView] = useState<"main" | "domain">("main");
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     const isCurrent = () => active;
     setResults([]);
     setDomainResults([]);
     setCurrentView("main");
     setLoading(false);
+    setLookupError(undefined);
+    setSource(undefined);
     const input = text.trim();
     if (!input) return;
 
@@ -41,35 +47,25 @@ function Command({ initialText }: InitialInputProps) {
     setLoading(true);
     // Debounce typing and cancel effect replays before issuing a request.
     const timer = setTimeout(() => {
-      if (isIP) lookupIPInfo(input, isCurrent);
+      if (isIP) lookupIPInfo(input, isCurrent, controller.signal);
       else resolveDomain(input, isCurrent);
     }, 150);
     return () => {
       active = false;
       clearTimeout(timer);
+      controller.abort();
     };
-  }, [text]);
+  }, [text, retry]);
 
-  const lookupIPInfo = async (ip: string, isCurrent: () => boolean): Promise<void> => {
+  const lookupIPInfo = async (ip: string, isCurrent: () => boolean, signal: AbortSignal): Promise<void> => {
     try {
-      const info = await networkUtils.getIPInfo(ip);
+      const info = await networkUtils.getIPInfo(ip, signal);
       if (!isCurrent()) return;
-      if (info.startsWith("Error") || info.startsWith("Invalid")) {
-        setResults([{ title: info, subtitle: "Lookup failed", details: "" }]);
-      } else {
-        const lines = info.split("\n");
-        const results = lines.map((line) => {
-          const [label, value] = line.split(": ");
-          return {
-            title: value || line,
-            subtitle: label || "Info",
-            details: info,
-          };
-        });
-        setResults(results);
-      }
+      const details = info.fields.map(({ label, value }) => `${label}: ${value}`).join("\n");
+      setSource(info.source);
+      setResults(info.fields.map(({ label, value }) => ({ title: value, subtitle: label, details })));
     } catch (error) {
-      if (isCurrent()) setResults([{ title: "Lookup failed", subtitle: String(error), details: "" }]);
+      if (isCurrent()) setLookupError(error instanceof Error ? error.message : String(error));
     } finally {
       if (isCurrent()) setLoading(false);
     }
@@ -122,8 +118,10 @@ function Command({ initialText }: InitialInputProps) {
     const requestRevision = ++revision.current;
     setLoading(true);
     try {
-      const response = await fetch("https://api.ipify.org?format=json");
+      const response = await fetch("https://api.ipify.org?format=json", { signal: AbortSignal.timeout(5000) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = (await response.json()) as { ip: string };
+      if (!networkUtils.isValidIP(data.ip)) throw new Error("Service returned an invalid IP address");
       if (revision.current === requestRevision) setInput(data.ip, true);
     } catch (error) {
       if (revision.current === requestRevision)
@@ -162,28 +160,31 @@ function Command({ initialText }: InitialInputProps) {
       ) : (
         <>
           <List.EmptyView
-            title="Enter IP address or domain"
-            description="Type IPv4/IPv6 address or domain name to lookup"
+            title={lookupError ? "Lookup failed" : loading ? "Looking up…" : "Enter IP address or domain"}
+            description={lookupError ?? "Type IPv4/IPv6 address or domain name to lookup"}
             actions={
               <ActionPanel>
+                {lookupError && <Action title="Retry Lookup" onAction={() => setRetry((value) => value + 1)} />}
                 <Action title="Get Current IP" onAction={getCurrentIP} />
               </ActionPanel>
             }
           />
-          {results.map((result, index) => (
-            <List.Item
-              key={index}
-              title={result.title}
-              subtitle={result.subtitle}
-              actions={
-                <ActionPanel>
-                  <Action title="Copy" onAction={() => handleAction(result.title)} />
-                  <Action.Paste content={result.title} />
-                  <Action.CopyToClipboard content={result.details} />
-                </ActionPanel>
-              }
-            />
-          ))}
+          <List.Section title={source ? "IP Information" : undefined} subtitle={source}>
+            {results.map((result, index) => (
+              <List.Item
+                key={index}
+                title={result.title}
+                subtitle={result.subtitle}
+                actions={
+                  <ActionPanel>
+                    <Action title="Copy" onAction={() => handleAction(result.title)} />
+                    <Action.Paste content={result.title} />
+                    <Action.CopyToClipboard title="Copy All Information" content={result.details} />
+                  </ActionPanel>
+                }
+              />
+            ))}
+          </List.Section>
         </>
       )}
     </List>
